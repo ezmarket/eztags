@@ -12,7 +12,8 @@ class eztagsInfo
         return array( 'Name' => 'eZ Tags',
                       'Version' => '//autogen//',
                       'Copyright' => '//autogen//',
-                      'License' => '//autogen//' );
+                      'License' => '//autogen//'
+                    );
     }
 }
 
