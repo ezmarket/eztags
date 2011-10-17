@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!--                                                             -->
+<!-- This script is a copy and paste of eZ Extension builder     -->
+<!-- Compiled by CPG                                             -->
+<!--                                                             -->
+<!-- Source:                                                     -->
+<!-- eZ Extension Builder                                        -->
+<!-- an Ant build file for eZ Publish extensions                 -->
+<!--                                                             -->
+<!-- @author J. Renard                                           -->
+<!-- @author O. M. Smestad                                       -->
+<!-- @author G. Giunta                                           -->
+<!-- @copyright Copyright (C) 2010 eZ Systems AS                 -->
+<!-- @license code licensed under the GPL License                -->
+<!--                                                             -->
+<project name="eZExtensionBuilder" default="help">
+
+    <description>eZExtensionBuilder build file</description>
+
+    <taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+
+
+    <!-- ================== -->
+    <!-- Build properties   -->
+    <!-- ================== -->
+
+    <tstamp>
+        <format property="date.now"          pattern="yyyy-mm-dd_hh:mm:ss"/>
+        <format property="date.current.year" pattern="yyyy"/>
+    </tstamp>
+
+    <property name="build.dir" value="build"/>
+
+    <!-- an extension properties file must be stored in              -->
+    <!-- an 'ant' folder under the root of the extension             -->
+    <!-- For example for extension ezoe this gives :                 -->
+    <!-- ezoe                                                        -->
+    <!--   +ant                                                      -->
+    <!--      +-ezoe.properties                                      -->
+    <!--                                                             -->
+    <!-- the property files must be composed of the                  -->
+    <!-- following variables                                         -->
+    <!--                                                             -->
+    <!-- <extensionname>.version.major     = xxx                     -->
+    <!-- <extensionname>.version.minor     = yyy                     -->
+    <!-- <extensionname>.version.release   = zzzz                    -->
+    <!--                                                             -->
+    <property file="./ant/${extension.name}.properties"/>
+
+    <patternset id="all.sources">
+        <include name="**/*"/>
+    </patternset>
+
+    <!-- http://ant-contrib.sourceforge.net/tasks/tasks/propertycopy.html -->
+    <propertycopy name="version.major"   from="${extension.name}.version.major"/>
+    <propertycopy name="version.minor"   from="${extension.name}.version.minor"/>
+    <propertycopy name="version.release" from="${extension.name}.version.release"/>
+    <propertycopy name="git.repository"  from="${extension.name}.git.repository" />
+    <propertycopy name="copyright"       from="${extension.name}.copyright"/>
+    
+    <!-- the following properties are not mandatory -->
+    <propertycopy name="git.branch"      from="${extension.name}.git.branch" silent="true"/>
+    <property     name="git.branch"      value="master"/>
+    <propertycopy name="create.tarball"  from="${extension.name}.create.tarball" silent="true"/>
+    <property     name="create.tarball"  value="no"/>
+    <propertycopy name="create.zip"      from="${extension.name}.create.zip" silent="true"/>
+    <property     name="create.zip"      value="no"/>
+    <propertycopy name="version.license" from="${extension.name}.version.license" silent="true"/>
+    <property     name="version.license" value="http://www.gnu.org/licenses/gpl-3.0.txt GNU General Public License v3"/>
+    <propertycopy name="version.alias"   from="${extension.name}.version.alias" silent="true"/>
+    <property     name="version.alias"   value="${version.major}.${version.minor}"/>
+    <propertycopy name="license.shorttext" from="${extension.name}.license.shorttext"/>
+
+    <!-- the following properties are normally not overridden -->
+    <property     name="releasenr.separator" value="-"/>
+
+
+    <!-- =================== -->
+    <!-- Targets   -->
+    <!-- =================== -->
+
+    <!-- Shows the help message. This is default target -->
+    <!-- Nothing will be built unless clearly specified -->
+    <target name="help" description="Shows this help">
+        <echo message="Please run : ant -p to learn more about available targets"/>
+        <antcall target="show-properties"/>
+    </target>
+
+    <!-- Shows available properties for this build file        -->
+    <!-- extension.name should be defined as a script argument -->
+    <!-- ant -Dextension.name=<extensionname>                  -->
+    <target name="show-properties" description="Shows the properties for this build file">
+        <echo message="build.dir        : ${build.dir}"/>
+        <echo message="extension name   : ${extension.name}"/>
+    </target>
+
+    <!-- Build the extension and generate the tarball -->
+    <target name="all" description="Build the extension and generate the deliverables">
+        <antcall target="build"/>
+        <antcall target="pack"/>
+    </target>
+
+    <!-- Removes the generated tarball -->
+    <target name="dist-clean" description="Removes the dist directory with zips and tarballs">
+        <delete dir="dist"/>
+    </target>
+
+    <!-- Builds the extension -->
+    <target name="build" depends="init" description="Builds the extension">
+        <delete dir="${build.dir}/${extension.name}/ant"/>
+        <delete file="${build.dir}/${extension.name}/build.xml"/>
+        <delete dir="${build.dir}/${extension.name}/tests"/>
+
+        <antcall target="update-extensioninfo"/>
+        <antcall target="update-source-headers"/>
+    </target>
+
+    <!-- Removes the entire build/ directory -->
+    <target name="clean" description="Removes the entire build directory">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <!-- Removes build/ and dist/ -->
+    <target name="clean-all" description="Removes the build/ and the dist/ directory">
+        <antcall target="clean"/>
+        <antcall target="dist-clean"/>
+    </target>
+
+    <!-- Prepares the build directory -->
+    <!-- Creates the build/ directory if it does not already exists -->
+    <target name="init" description="Prepares the extension to be built">
+        <mkdir dir="${build.dir}"/>
+
+        <!-- git clone repository -->
+        <exec executable="git" failonerror="true">
+            <arg value="clone"/>
+            <arg value="-b"/>
+            <arg value="${git.branch}"/>
+            <arg value="-q"/>
+            <arg value="${git.repository}"/>
+            <arg value="${build.dir}/${extension.name}"/>
+        </exec>
+
+        <available file="ant/files.to.exclude.txt" property="files.to.exclude.exists"/>
+        <if>
+            <equals arg1="${files.to.exclude.exists}" arg2="true"/>
+            <then>
+                <!-- removes all files specified in the "files.to.exclude" -->
+                <loadfile srcFile="ant/files.to.exclude.txt" property="files.to.exclude"/>
+
+                <!-- in order to get directory removed they must be appended with a '/' -->
+                <!-- for example -->
+                <!-- ezinfo.php  -->
+                <!-- tests/      -->
+                <foreach list="${files.to.exclude}" delimiter="${line.separator}" target="-purge-file" param="file.to.purge"/>
+            </then>
+        </if>
+    </target>
+
+    <!-- Creates deliverables of the latest build -->
+    <target name="pack" description="Creates a tarball/zipfile of the build">
+        <!-- .tar.gz -->
+        <if>
+            <equals arg1="${create.tarball}" arg2="yes"/>
+        <then>
+            <mkdir dir="dist"/>
+            <tar destfile="dist/${extension.name}-${version.alias}.${version.release}.tar.gz"
+                compression="gzip"
+                longfile="gnu">
+                <tarfileset dir="${build.dir}/${extension.name}"
+                    prefix="${extension.name}"
+                            preserveLeadingSlashes="true">
+                        <include name="**/*"/>
+                </tarfileset>
+            </tar>
+        </then>
+        </if>
+        <!-- .zip -->
+        <if>
+            <equals arg1="${create.zip}" arg2="yes"/>
+        <then>
+            <mkdir dir="dist"/>
+            <zip destfile="dist/${extension.name}-${version.alias}.${version.release}.zip">
+                <zipfileset dir="${build.dir}/${extension.name}"
+                    prefix="${extension.name}"
+                    includes="**/*"/>
+            </zip>
+        </then>
+        </if>
+    </target>
+
+    <!-- Uses a regular expression to search and replace the correct string           -->
+    <!-- Within the file, please note there is a limit of 25 sets to indent 3rd party -->
+    <!-- lib version numbers, if you use more than 25 spaces the version number will  -->
+    <!-- not be updated correctly                                                     -->
+    <target name="update-extensioninfo" description="Updates ezinfo.php and extension.xml">
+
+        <echo message="Updating ezinfo.php"/>
+
+        <!-- ezinfo.php support : 'Version' => '//autogen//' -->
+        <replaceregexp byline="true">
+            <!-- 'Version' => 'xxxxxx', -->
+            <!-- The limit of spaces is set to 25 otherwise 3rd party version strings -->
+            <!-- will be replaced as well and we do not want that                     -->
+            <regexp pattern="^([\s]{1,25}\047Version\047[\s]+=>[\s]+\047)(.*)(\047,)$"/>
+            <substitution expression='\1${version.alias}${releasenr.separator}${version.release}\3'/>
+            <fileset dir="${build.dir}" includes="**/*ezinfo.php"/>
+        </replaceregexp>
+
+        <!-- ezinfo.php support : 'License' => '//autogen//' -->
+        <replaceregexp byline="true">
+            <!-- 'Version' => 'xxxxxx', -->
+            <!-- The limit of spaces is set to 25 otherwise 3rd party version strings -->
+            <!-- will be replaced as well and we do not want that                     -->
+            <regexp pattern="^([\s]{1,25}\047License\047[\s]+=>[\s]+\047)(.*)(\047)$"/>
+            <substitution expression='\1${license.shorttext}\3'/>
+            <fileset dir="${build.dir}" includes="**/*ezinfo.php"/>
+        </replaceregexp>
+
+        <!-- ezinfo.php support : 'Copyright' => '//autogen//' -->
+        <replaceregexp byline="true">
+            <!-- 'Version' => 'xxxxxx', -->
+            <!-- The limit of spaces is set to 25 otherwise 3rd party version strings -->
+            <!-- will be replaced as well and we do not want that                     -->
+            <regexp pattern="^([\s]{1,25}\047Copyright\047[\s]+=>[\s]+\047)(.*)(\047,)$"/>
+            <substitution expression='\1${copyright}\3'/>
+            <fileset dir="${build.dir}" includes="**/*ezinfo.php"/>
+        </replaceregexp>
+
+        <echo message="Updating extension.xml"/>
+
+        <!-- extension.xml support : <version>//autogen//</version> -->
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;version&gt;//autogen//&lt;/version&gt;$"/>
+            <substitution expression="&lt;version&gt;${version.alias}${releasenr.separator}${version.release}&lt;/version&gt;"/>
+            <fileset dir="${build.dir}"  includes="**/extension.xml"/>
+        </replaceregexp>
+
+        <!-- extension.xml support : <license>//autogen//</license>-->
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;license&gt;//autogen//&lt;/license&gt;"/>
+            <substitution expression="&lt;license&gt;${license.shorttext}&lt;/license&gt;"/>
+            <fileset dir="${build.dir}"  includes="**/extension.xml"/>
+        </replaceregexp>
+
+        <!-- extension.xml support : <copyright>//autogen//</copyright>-->
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;copyright&gt;//autogen//&lt;/copyright&gt;"/>
+            <substitution expression="&lt;copyright&gt;${copyright}&lt;/copyright&gt;"/>
+            <fileset dir="${build.dir}"  includes="**/extension.xml"/>
+        </replaceregexp>
+    </target>
+
+    <!-- header in each source code file -->
+    <target name="update-source-headers" description="Update headers in source code">
+        <echo message="Updating license headers"/>
+
+        <!-- @version //autogen// -->
+        <replaceregexp byline="true">
+            <regexp pattern="@version\s*//autogen//"/>
+            <substitution expression="@version ${version.alias}${releasenr.separator}${version.release}"/>
+            <fileset dir="${build.dir}">
+                <patternset refid="all.sources"/>
+            </fileset>
+        </replaceregexp>
+
+        <!--  @license //autogen// -->
+        <replaceregexp byline="true">
+            <regexp pattern="@license\s*//autogen//"/>
+            <substitution expression="@license ${license.shorttext}"/>
+            <fileset dir="${build.dir}">
+                <patternset refid="all.sources"/>
+            </fileset>
+        </replaceregexp>
+
+        <!-- @copyright //autogen// -->
+        <replaceregexp byline="true">
+            <regexp pattern="@copyright\s*//autogen//"/>
+            <substitution expression="@copyright ${copyright}"/>
+            <fileset dir="${build.dir}">
+                <patternset refid="all.sources"/>
+            </fileset>
+        </replaceregexp>
+    </target>
+
+    <!-- private target               -->
+    <!-- Purges a file or a directory -->
+    <target name="-purge-file">
+        <echo message="${build.dir}/${extension.name}/${file.to.purge}"/>
+        <delete includeemptydirs="true" verbose="false">
+            <fileset dir="${build.dir}/${extension.name}" includes="${file.to.purge}"/>
+        </delete>
+    </target>
+
+</project>
