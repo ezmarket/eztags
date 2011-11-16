@@ -1,4 +1,9 @@
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 /**
  * eZTagsAttributeLinkObject class inherits eZPersistentObject class

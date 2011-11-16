@@ -1,4 +1,9 @@
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 /**
  * eZTagsFunctionCollection class implements fetch functions for eztags

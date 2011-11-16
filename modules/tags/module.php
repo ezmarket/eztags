@@ -1,4 +1,9 @@
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 $Module = array( 'name'            => 'eZTags',
                  'variable_params' => true );

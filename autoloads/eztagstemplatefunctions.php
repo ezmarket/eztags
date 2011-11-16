@@ -1,4 +1,9 @@
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 /**
  * eZTagsTemplateFunctions class implements eztags tpl operator methods

@@ -1,5 +1,10 @@
 #!/usr/bin/env php
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 require 'autoload.php';
 

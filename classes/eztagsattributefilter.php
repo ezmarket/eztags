@@ -1,4 +1,9 @@
 <?php
+/**
+ * @version //autogen//
+ * @copyright //autogen//
+ * @license //autogen//
+ */
 
 /**
  * eZTagsAttributeFilter class implements TagsAttributeFilter extended attribute
