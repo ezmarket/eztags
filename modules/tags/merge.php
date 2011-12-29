@@ -75,6 +75,15 @@ else
                 }
             }
 
+            /* Extended Hook */
+            if ( class_exists( 'ezpEvent', false ) )
+            {
+                $tag = ezpEvent::getInstance()->filter( 'tag/merge', array(
+                    'tag'          => $tag,
+                    'newParentTag' => $mainTag,
+                    'oldParentTag' => $oldParentTag ) );
+            }
+
             eZTagsObject::moveChildren( $tag, $mainTag );
 
             $synonyms = $tag->getSynonyms();
@@ -126,10 +135,6 @@ else
             $tag->remove();
 
             $mainTag->updateModified();
-
-            /* Extended Hook */
-            if ( class_exists( 'ezpEvent', false ) )
-                $tag = ezpEvent::getInstance()->filter( 'tag/merge', array( 'tag' => $tag, 'mainTag' => $mainTag ) );
 
             $db->commit();
 
