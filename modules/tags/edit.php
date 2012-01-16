@@ -22,9 +22,9 @@ if ( !( $tag instanceof eZTagsObject ) )
     return $Module->handleError( eZError::KERNEL_NOT_FOUND, 'kernel' );
 }
 
-if ( $tag->MainTagID != 0 )
+if ( $tag->attribute( 'main_tag_id' ) != 0 )
 {
-    return $Module->redirectToView( 'edit', array( $tag->MainTagID ) );
+    return $Module->redirectToView( 'edit', array( $tag->attribute( 'main_tag_id' ) ) );
 }
 
 if ( $http->hasPostVariable( 'DiscardButton' ) )
@@ -50,10 +50,10 @@ if ( $http->hasPostVariable( 'SaveButton' ) )
     }
 
     $newParentTag = eZTagsObject::fetch( (int) $http->postVariable( 'TagEditParentID' ) );
-    $newParentID = ( $newParentTag instanceof eZTagsObject ) ? $newParentTag->ID : 0;
+    $newParentID = ( $newParentTag instanceof eZTagsObject ) ? $newParentTag->attribute( 'id' ) : 0;
 
     $newKeyword = trim( $http->postVariable( 'TagEditKeyword' ) );
-    if ( empty( $error ) && eZTagsObject::exists( $tag->ID, $newKeyword, $newParentID ) )
+    if ( empty( $error ) && eZTagsObject::exists( $tag->attribute( 'id' ), $newKeyword, $newParentID ) )
     {
         $error = ezpI18n::tr( 'extension/eztags/errors', 'Tag/synonym with that name already exists in selected location.' );
     }
@@ -66,13 +66,13 @@ if ( $http->hasPostVariable( 'SaveButton' ) )
         $db = eZDB::instance();
         $db->begin();
 
-        $oldParentDepth = $tag->Depth - 1;
-        $newParentDepth = ( $newParentTag instanceof eZTagsObject ) ? $newParentTag->Depth : 0;
+        $oldParentDepth = $tag->attribute( 'depth' ) - 1;
+        $newParentDepth = ( $newParentTag instanceof eZTagsObject ) ? $newParentTag->attribute( 'depth' ) : 0;
 
         if ( $oldParentDepth != $newParentDepth )
             $updateDepth = true;
 
-        if ( $tag->ParentID != $newParentID )
+        if ( $tag->attribute( 'parent_id' ) != $newParentID )
         {
             $oldParentTag = $tag->getParent();
             if ( $oldParentTag instanceof eZTagsObject )
@@ -83,20 +83,20 @@ if ( $http->hasPostVariable( 'SaveButton' ) )
             $synonyms = $tag->getSynonyms();
             foreach ( $synonyms as $synonym )
             {
-                $synonym->ParentID = $newParentID;
+                $synonym->setAttribute( 'parent_id', $newParentID );
                 $synonym->store();
             }
 
             $updatePathString = true;
         }
 
-        $tag->Keyword = $newKeyword;
-        $tag->ParentID = $newParentID;
+        $tag->setAttribute( 'keyword', $newKeyword );
+        $tag->setAttribute( 'parent_id', $newParentID );
         $tag->store();
 
         /* Extended Hook */
         if ( class_exists( 'ezpEvent', false ) ) {
-            $tag = ezpEvent::getInstance()->filter( 'tag/edit', array(
+            ezpEvent::getInstance()->filter( 'tag/edit', array(
                 'tag'          => $tag,
                 'oldParentTag' => $oldParentTag,
                 'newParentTag' => $newParentTag,
@@ -136,14 +136,14 @@ $tempTag = $tag;
 while ( $tempTag->hasParent() )
 {
     $tempTag = $tempTag->getParent();
-    $Result['path'][] = array( 'tag_id' => $tempTag->ID,
-                               'text'   => $tempTag->Keyword,
+    $Result['path'][] = array( 'tag_id' => $tempTag->attribute( 'id' ),
+                               'text'   => $tempTag->attribute( 'keyword' ),
                                'url'    => false );
 }
 
 $Result['path'] = array_reverse( $Result['path'] );
-$Result['path'][] = array( 'tag_id' => $tag->ID,
-                           'text'   => $tag->Keyword,
+$Result['path'][] = array( 'tag_id' => $tag->attribute( 'id' ),
+                           'text'   => $tag->attribute( 'keyword' ),
                            'url'    => false );
 
 $contentInfoArray = array();

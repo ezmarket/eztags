@@ -23,9 +23,9 @@ if ( !( $tag instanceof eZTagsObject ) )
     return $Module->handleError( eZError::KERNEL_NOT_FOUND, 'kernel' );
 }
 
-if ( $tag->MainTagID != 0 )
+if ( $tag->attribute( 'main_tag_id' ) != 0 )
 {
-    return $Module->redirectToView( 'merge', array( $tag->MainTagID ) );
+    return $Module->redirectToView( 'merge', array( $tag->attribute( 'main_tag_id' ) ) );
 }
 
 if ( $tag->getSubTreeLimitationsCount() > 0 )
@@ -66,7 +66,7 @@ else
             $db = eZDB::instance();
             $db->begin();
 
-            if ( $tag->ParentID != $mainTag->ParentID )
+            if ( $tag->attribute( 'parent_id' ) != $mainTag->attribute( 'parent_id' ) )
             {
                 $oldParentTag = $tag->getParent();
                 if ( $oldParentTag instanceof eZTagsObject )
@@ -78,7 +78,7 @@ else
             /* Extended Hook */
             if ( class_exists( 'ezpEvent', false ) )
             {
-                $tag = ezpEvent::getInstance()->filter( 'tag/merge', array(
+                ezpEvent::getInstance()->filter( 'tag/merge', array(
                     'tag'          => $tag,
                     'newParentTag' => $mainTag,
                     'oldParentTag' => $oldParentTag ) );
@@ -93,14 +93,14 @@ else
                 foreach ( $synonym->getTagAttributeLinks() as $tagAttributeLink )
                 {
                     $link = eZTagsAttributeLinkObject::fetchByObjectAttributeAndKeywordID(
-                                $tagAttributeLink->ObjectAttributeID,
-                                $tagAttributeLink->ObjectAttributeVersion,
-                                $tagAttributeLink->ObjectID,
-                                $mainTag->ID );
+                                $tagAttributeLink->attribute( 'objectattribute_id' ),
+                                $tagAttributeLink->attribute( 'objectattribute_version' ),
+                                $tagAttributeLink->attribute( 'object_id' ),
+                                $mainTag->attribute( 'id' ) );
 
                     if ( !( $link instanceof eZTagsAttributeLinkObject ) )
                     {
-                        $tagAttributeLink->KeywordID = $mainTag->ID;
+                        $tagAttributeLink->setAttribute( 'keyword_id', $mainTag->attribute( 'id' ) );
                         $tagAttributeLink->store();
                     }
                     else
@@ -116,14 +116,14 @@ else
             foreach ( $tag->getTagAttributeLinks() as $tagAttributeLink )
             {
                 $link = eZTagsAttributeLinkObject::fetchByObjectAttributeAndKeywordID(
-                            $tagAttributeLink->ObjectAttributeID,
-                            $tagAttributeLink->ObjectAttributeVersion,
-                            $tagAttributeLink->ObjectID,
-                            $mainTag->ID );
+                            $tagAttributeLink->attribute( 'objectattribute_id' ),
+                            $tagAttributeLink->attribute( 'objectattribute_version' ),
+                            $tagAttributeLink->attribute( 'object_id' ),
+                            $mainTag->attribute( 'id' ) );
 
                 if ( !( $link instanceof eZTagsAttributeLinkObject ) )
                 {
-                    $tagAttributeLink->KeywordID = $mainTag->ID;
+                    $tagAttributeLink->setAttribute( 'keyword_id', $mainTag->attribute( 'id' ) );
                     $tagAttributeLink->store();
                 }
                 else
@@ -138,7 +138,7 @@ else
 
             $db->commit();
 
-            return $Module->redirectToView( 'id', array( $mainTag->ID ) );
+            return $Module->redirectToView( 'id', array( $mainTag->attribute( 'id' ) ) );
         }
     }
 }
@@ -159,14 +159,14 @@ $tempTag = $tag;
 while ( $tempTag->hasParent() )
 {
     $tempTag = $tempTag->getParent();
-    $Result['path'][] = array( 'tag_id' => $tempTag->ID,
-                               'text'   => $tempTag->Keyword,
+    $Result['path'][] = array( 'tag_id' => $tempTag->attribute( 'id' ),
+                               'text'   => $tempTag->attribute( 'keyword' ),
                                'url'    => false );
 }
 
 $Result['path'] = array_reverse( $Result['path'] );
-$Result['path'][] = array( 'tag_id' => $tag->ID,
-                           'text'   => $tag->Keyword,
+$Result['path'][] = array( 'tag_id' => $tag->attribute( 'id' ),
+                           'text'   => $tag->attribute( 'keyword' ),
                            'url'    => false );
 
 $contentInfoArray = array();
